@@ -138,6 +138,8 @@
   }
   .tab.on{color:var(--acc);background:var(--acc-soft)}
 
+  .reviewcard{border:1px solid var(--warn);background:var(--panel);border-radius:14px;padding:16px}
+  .reviewcard .stars{font-size:18px;letter-spacing:2px}
   /* karta brandowa — stałe kolory marki, celowo wyróżnia się na obu motywach */
   .brandcard{display:flex;align-items:center;gap:14px;margin-top:4px;padding:14px 16px;border-radius:14px;
     background:linear-gradient(135deg,#2C2046,#372854 55%,#453280);border:1px solid #4C3B7E;text-decoration:none}
@@ -268,6 +270,7 @@ const CREDIT=`<a class="brandcard" href="https://prospere.ai/?utm_source=radar-t
   <span class="cta">prospere.ai →</span>
 </a>`;
 document.getElementById("hlogo").src=LOGO;
+const REVIEW_URL="https://g.page/r/CSrXulSFF7z3EBM/review";
 const KEY="radarTrainer.v1";
 let mem={};
 function load(){ try{ return JSON.parse(localStorage.getItem(KEY))||{} }catch(e){ return mem } }
@@ -526,6 +529,15 @@ function egzResult(){
       <details class="qa"><summary><span class="qno num">${a.q.n}.</span><span>${esc(a.q.q)}</span></summary>
       <div class="ans">${a.oi>=0?`<span style="color:var(--bad)">✗ Deine Antwort:</span> ${esc(a.q.o[a.oi])}<br>`:`<span style="color:var(--bad)">✗ Übersprungen</span><br>`}<b>✓</b> ${esc(a.q.o[a.q.a])}</div></details>`).join("")}</div>
   </div>`:`<div class="card" style="text-align:center">Fehlerfrei. 🎯</div>`}
+  ${pass&&(!S.review||!(S.review.done||S.review.hidden))?`<div class="reviewcard stack" id="rev" style="gap:10px">
+    <div><span class="stars">★★★★★</span>
+    <h2 style="margin-top:6px">Gefällt dir die App?</h2>
+    <p class="muted" style="font-size:14px;margin:4px 0 0">Eine Google-Bewertung für Prospere AI dauert 30 Sekunden und hilft uns enorm. Die App bleibt natürlich so oder so kostenlos.</p></div>
+    <div class="row">
+      <a class="btn primary grow" style="text-align:center;text-decoration:none" href="${REVIEW_URL}" target="_blank" rel="noopener" id="rev-go">⭐ Jetzt bewerten</a>
+      <button class="btn ghost" id="rev-later">Später</button>
+    </div>
+  </div>`:""}
   <div class="card stack">
     <button class="btn primary" id="again">Noch einmal</button>
     <button class="btn ghost" id="home2">Zur Startseite</button>
@@ -533,6 +545,12 @@ function egzResult(){
   ${CREDIT}`;
   egz=null;
   el("again").onclick=()=>go("egzamin"); el("home2").onclick=()=>go("home");
+  const revGo=el("rev-go");
+  if(revGo){
+    revGo.onclick=()=>{ S.review={done:true}; save(S);
+      el("rev").innerHTML='<h2>Danke! 💜</h2><p class="muted" style="font-size:14px;margin:4px 0 0">Viel Erfolg bei der Prüfung!</p>' };
+    el("rev-later").onclick=()=>{ el("rev").remove() };
+  }
 }
 
 /* ==== START ==== */
