@@ -1,0 +1,518 @@
+<!doctype html>
+<html lang="de">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Radar Trainer · WSA Duisburg</title>
+<style>
+  :root{
+    --bg:#EDF1F3; --panel:#FFFFFF; --panel2:#E2E9ED; --ink:#182530; --muted:#5B6D79;
+    --line:#D2DCE2; --acc:#0E8A66; --acc-soft:rgba(14,138,102,.12); --on-acc:#FFFFFF;
+    --good:#0E8A66; --bad:#C4553E; --bad-soft:rgba(196,85,62,.12); --warn:#A87A2D;
+    --scope-bg:#10201B; --scope-line:rgba(63,201,147,.28); --scope-blip:#3FC993;
+    --shadow:0 1px 3px rgba(24,37,48,.08);
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#0C141C; --panel:#141F2A; --panel2:#1C2B38; --ink:#E6EDF1; --muted:#8AA0AD;
+      --line:#253847; --acc:#3FC993; --acc-soft:rgba(63,201,147,.14); --on-acc:#08120D;
+      --good:#3FC993; --bad:#E07B63; --bad-soft:rgba(224,123,99,.14); --warn:#E0A458;
+      --shadow:none;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0C141C; --panel:#141F2A; --panel2:#1C2B38; --ink:#E6EDF1; --muted:#8AA0AD;
+    --line:#253847; --acc:#3FC993; --acc-soft:rgba(63,201,147,.14); --on-acc:#08120D;
+    --good:#3FC993; --bad:#E07B63; --bad-soft:rgba(224,123,99,.14); --warn:#E0A458;
+    --shadow:none;
+  }
+  :root[data-theme="light"]{
+    --bg:#EDF1F3; --panel:#FFFFFF; --panel2:#E2E9ED; --ink:#182530; --muted:#5B6D79;
+    --line:#D2DCE2; --acc:#0E8A66; --acc-soft:rgba(14,138,102,.12); --on-acc:#FFFFFF;
+    --good:#0E8A66; --bad:#C4553E; --bad-soft:rgba(196,85,62,.12); --warn:#A87A2D;
+    --shadow:0 1px 3px rgba(24,37,48,.08);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--bg); color:var(--ink);
+    font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  #app{max-width:660px;margin:0 auto;padding:0 16px 84px}
+  header{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:18px 2px 10px}
+  .brand{font-weight:800;font-size:17px;letter-spacing:.02em}
+  .brand small{display:block;font-family:var(--mono);font-size:11px;font-weight:400;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-top:2px}
+  .kbd{font-family:var(--mono);font-size:12px;color:var(--muted)}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;box-shadow:var(--shadow)}
+  .stack{display:flex;flex-direction:column;gap:12px}
+  .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .grow{flex:1}
+  h2{font-size:15px;margin:0 0 4px;letter-spacing:.01em}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+  .muted{color:var(--muted)}
+  .num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+  .btn{
+    appearance:none;border:1px solid var(--line);background:var(--panel);color:var(--ink);
+    border-radius:11px;padding:11px 16px;font-size:15px;font-weight:600;cursor:pointer;
+    transition:transform .05s ease;
+  }
+  .btn:active{transform:scale(.98)}
+  .btn:focus-visible,.opt:focus-visible,.tab:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+  .btn.primary{background:var(--acc);border-color:var(--acc);color:var(--on-acc)}
+  .btn.ghost{background:transparent}
+  .btn.small{padding:7px 12px;font-size:13px;border-radius:9px}
+  .btn.danger{color:var(--bad);border-color:var(--bad)}
+  .btn:disabled{opacity:.45;cursor:default}
+
+  /* scope */
+  .scopewrap{display:flex;gap:18px;align-items:center}
+  canvas#scope{width:148px;height:148px;flex:none;border-radius:50%;background:var(--scope-bg)}
+  .bigpct{font-family:var(--mono);font-size:34px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+  .bars{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+  .bar{display:grid;grid-template-columns:18px 1fr 52px;gap:10px;align-items:center;font-size:13px}
+  .bar .track{height:6px;border-radius:3px;background:var(--panel2);overflow:hidden}
+  .bar .fill{height:100%;border-radius:3px;background:var(--acc)}
+  .bar .lbl{font-family:var(--mono);color:var(--muted)}
+
+  /* question */
+  .qcat{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+  .qtext{font-size:17px;font-weight:700;line-height:1.4;text-wrap:balance;margin:0 0 14px}
+  .opts{display:flex;flex-direction:column;gap:8px}
+  .opt{
+    text-align:left;border:1px solid var(--line);background:var(--panel);color:var(--ink);
+    border-radius:11px;padding:11px 13px;font-size:15px;line-height:1.45;cursor:pointer;width:100%;
+  }
+  .opt:not(:disabled):hover{border-color:var(--acc)}
+  .opt.sel{border-color:var(--acc);background:var(--acc-soft)}
+  .opt.right{border-color:var(--good);background:var(--acc-soft)}
+  .opt.wrong{border-color:var(--bad);background:var(--bad-soft)}
+  .opt:disabled{cursor:default;opacity:1}
+  .verdict{font-weight:700;margin:12px 0 2px}
+  .verdict.ok{color:var(--good)} .verdict.bad{color:var(--bad)}
+
+  .progress{height:5px;border-radius:3px;background:var(--panel2);overflow:hidden;margin:8px 0 14px}
+  .progress .fill{height:100%;background:var(--acc);transition:width .2s ease}
+
+  /* nauka */
+  details.qa{border:1px solid var(--line);border-radius:11px;background:var(--panel);padding:0}
+  details.qa summary{list-style:none;cursor:pointer;padding:11px 13px;font-size:14.5px;font-weight:600;display:flex;gap:9px}
+  details.qa summary::-webkit-details-marker{display:none}
+  details.qa .qno{font-family:var(--mono);color:var(--muted);flex:none}
+  details.qa .ans{padding:2px 13px 13px;font-size:14.5px;border-top:1px dashed var(--line);margin-top:2px;padding-top:10px;color:var(--ink)}
+  details.qa .ans b{color:var(--good)}
+  .dot{width:8px;height:8px;border-radius:50%;flex:none;margin-top:7px}
+  .dot.m0{background:var(--panel2)} .dot.m1{background:var(--warn)} .dot.m2{background:var(--good)} .dot.mx{background:var(--bad)}
+
+  .chips{display:flex;gap:8px;flex-wrap:wrap}
+  .chip{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:6px 13px;font-size:13px;font-weight:600;cursor:pointer;color:var(--ink)}
+  .chip.on{background:var(--acc);border-color:var(--acc);color:var(--on-acc)}
+
+  /* wyniki egzaminu */
+  .resultpct{font-family:var(--mono);font-size:44px;font-weight:800;line-height:1}
+  .passflag{font-weight:800;letter-spacing:.05em}
+  .passflag.ok{color:var(--good)} .passflag.bad{color:var(--bad)}
+  table.hist{width:100%;border-collapse:collapse;font-size:13.5px}
+  table.hist td{padding:7px 4px;border-top:1px solid var(--line)}
+  table.hist td:last-child{text-align:right}
+
+  nav#tabs{
+    position:fixed;bottom:0;left:0;right:0;display:flex;justify-content:center;gap:2px;
+    background:var(--panel);border-top:1px solid var(--line);
+    padding:6px 8px calc(6px + env(safe-area-inset-bottom));
+  }
+  .tab{
+    flex:1;max-width:160px;appearance:none;border:0;background:none;color:var(--muted);
+    font-size:12px;font-weight:700;letter-spacing:.04em;padding:8px 4px;border-radius:9px;cursor:pointer;
+    font-family:var(--mono);text-transform:uppercase;
+  }
+  .tab.on{color:var(--acc);background:var(--acc-soft)}
+  @media (prefers-reduced-motion: reduce){ .progress .fill{transition:none} }
+</style>
+
+<div id="app">
+  <header>
+    <div class="brand">Radar Trainer<small>WSA Duisburg · Radarprüfung · 83 Fragen</small></div>
+    <div class="kbd num" id="hdr-stat"></div>
+  </header>
+  <main id="view" class="stack"></main>
+</div>
+<nav id="tabs">
+  <button class="tab" data-v="home">Start</button>
+  <button class="tab" data-v="nauka">Lernen</button>
+  <button class="tab" data-v="trening">Training</button>
+  <button class="tab" data-v="egzamin">Prüfung</button>
+</nav>
+
+<script>
+"use strict";
+/* ==== DANE: 83 pytania, opcje w kolejności z arkusza, a = indeks poprawnej ==== */
+const CATS = {
+  A:"Radartheorie – Funkwellen und Reflexion",
+  B:"Aufbau, Arbeitsweise und Kenngrößen der Radaranlage",
+  C:"Auswertung des Radarbildes",
+  D:"Radarbildstörungen und Bedienung",
+  E:"Wendeanzeiger, Funk und Radarfahrt"
+};
+const Q = [
+{n:1,c:"A",q:"Mit welcher Art von Wellen arbeiten Radaranlagen?",o:["Mechanische Wasserwellen.","Schallwellen.","Es werden elektromagnetische Wellen verwendet.","Infrarotstrahlung aus dem Sichtgerät."],a:2},
+{n:2,c:"A",q:"Wie breiten sich elektromagnetische Wellen im freien Raum aus?",o:["Die Radaranlage kann dadurch automatisch ohne Bedienung navigieren.","Die Kurswahl wird ausschließlich durch GPS vorgegeben.","Die Wellen breiten sich geradlinig aus.","Die Anzeige wird dadurch ausschließlich farblich verändert."],a:2},
+{n:3,c:"A",q:"Welche Wellenlänge haben die vom Binnenschiffradar verwendeten Wellen?",o:["Etwa 3,2 m.","Etwa 0,32 mm.","Etwa eine Wellenlänge von etwa 3,2 cm.","Etwa 32 cm."],a:2},
+{n:4,c:"A",q:"Mit welcher Geschwindigkeit breiten sich elektromagnetische Wellen im freien Raum aus?",o:["Mit ca. 1.200 m/s.","Die Ausbreitung erfolgt mit Lichtgeschwindigkeit (300 000 km/s oder 300 m/µs).","Mit ca. 330 m/s.","Mit der Strömungsgeschwindigkeit des Fahrwassers."],a:1},
+{n:5,c:"A",q:"Mit welcher Geschwindigkeit breiten sich Schallwellen im freien Raum aus?",o:["Mit der Drehzahl der Radarantenne.","Mit Lichtgeschwindigkeit.","Mit ca. 15 m/s.","Schallwellen breiten sich mit etwa 330 m/s aus."],a:3},
+{n:6,c:"A",q:"Wodurch unterscheiden sich gerichtete und diffuse Reflexion?",o:["Diese Aussage betrifft nur die Tiefenmessung.","Bei gerichteter Reflexion werden Sendeimpulse nach dem Reflexionsgesetz (Einfallswinkel = Ausfallswinkel) überwiegend in eine Richtung reflektiert. Bei diffuser Reflexion werden die Impulse in verschiedene Richtungen reflektiert.","Die Entfernungen werden dabei grundsätzlich nicht beeinflusst.","Dies ist nur für Seeschiffe auf offener See vorgeschrieben."],a:1},
+{n:7,c:"A",q:"Wie lautet die Bezeichnung des zurückkehrenden Sendeimpulses?",o:["Die Anlage ersetzt die Funkabsprache vollständig.","Die Radaranlage kann dadurch automatisch ohne Bedienung navigieren.","Der zurückkehrende Sendeimpuls wird Echopuls oder kurz Echo genannt.","Die Kurswahl wird ausschließlich durch GPS vorgegeben."],a:2},
+{n:8,c:"A",q:"Was geschieht, wenn Sendeimpulse auf ein Objekt treffen?",o:["Diese Funktion ist nur bei Nachtfahrten erforderlich.","Die Maßnahme ist bei guter Sicht und unsichtigem Wetter verboten.","Die Impulse werden größtenteils reflektiert und zum Teil absorbiert.","Die Anzeige wird dadurch ausschließlich farblich verändert."],a:2},
+{n:9,c:"A",q:"Unter welchem Winkel müssen Sendeimpulse auf ein Objekt treffen, damit ein Echo empfangen wird?",o:["Unter einem Winkel von etwa 45°.","Ein rechtwinkliges Auftreffen (90°) ist erforderlich, damit ein Echo zurück zur Antenne gelangt.","Unter einem möglichst flachen Winkel.","Der Winkel spielt für den Echoempfang keine Rolle."],a:1},
+{n:10,c:"A",q:"Was passiert mit den Radarimpulsen, die nicht rechtwinklig auftreten?",o:["Die Maßnahme ist bei guter Sicht und unsichtigem Wetter verboten.","Impulse, die nicht rechtwinklig auftreten, werden in den freien Raum abgelenkt und erzeugen kein Echo.","Diese Aussage betrifft nur die Tiefenmessung.","Diese Funktion ist nur bei Nachtfahrten erforderlich."],a:1},
+{n:11,c:"A",q:"Was geschieht mit den Radarimpulsen, die auf kein Objekt treffen?",o:["Die Entfernungen werden dabei grundsätzlich nicht beeinflusst.","Die Radaranlage kann dadurch automatisch ohne Bedienung navigieren.","Diese Impulse breiten sich weiter aus, bis ihre Energie aufgebraucht ist.","Die Anzeige wird dadurch ausschließlich farblich verändert."],a:2},
+{n:12,c:"A",q:"Warum liefert eine glatte Wasseroberfläche kein Echo?",o:["Weil nur AIS-Ziele auf Wasser dargestellt werden.","Weil Wasser Radarstrahlen vollständig absorbiert.","Weil die Radarantenne unter Wasser nicht sendet.","Eine gerichtete Reflexion spiegelt die Sendeimpulse weg, so dass nahezu kein Echo zurückkehrt."],a:3},
+{n:13,c:"A",q:"Warum werden Uferlinien und aus der Wasseroberfläche herausragende Objekte im Radarbild als Punkte, Linien oder Flächen dargestellt?",o:["Uferlinien und herausragende Objekte besitzen Flächenanteile, die rechtwinklig getroffen werden und die Impulse zur Radarantenne zurückreflektieren.","Als automatisch berechnete Fahrtroute.","Als Tiefenprofil des Gewässers.","Als Farbbild mit Höhenangaben."],a:0},
+{n:14,c:"A",q:"Können unter Wasser befindliche Objekte im Radarbild erkannt werden?",o:["Nur Objekte mit AIS-Sender werden erkannt.","Ja, alle Unterwasserhindernisse werden exakt dargestellt.","Ja, sofern das Echolot eingeschaltet ist.","Im Allgemeinen können Objekte unter der Wasseroberfläche nicht erkannt werden; bei fließenden Gewässern sind lediglich die von den Objekten erzeugten Wellen erkennbar."],a:3},
+{n:15,c:"A",q:"Welche Ufergestaltung erzeugt sichere Echos und welche ist weniger sichtbar?",o:["Die Einstellung betrifft ausschließlich den Inland-AIS-Empfang.","Die Anlage ersetzt die Funkabsprache vollständig.","Steile, senkrechte Uferböschungen erzeugen deutliche Echos; flache, sanft ansteigende und glatte Böschungen liefern nur schwache oder keine Echos.","Diese Funktion ist nur bei Nachtfahrten erforderlich."],a:2},
+{n:16,c:"A",q:"Welche wesentlichen Funktionsbestandteile besitzt eine Flussradaranlage?",o:["Die Kurswahl wird ausschließlich durch GPS vorgegeben.","Dies ist nur für Seeschiffe auf offener See vorgeschrieben.","Diese Funktion ist nur bei Nachtfahrten erforderlich.","Eine Flussradaranlage besteht aus einer Außeneinheit (Antenne, Drehkupplung, Drehmotor, Synchrongenerator, Sender, Sende-Empfangs-Umschalter, Empfänger) und einer Inneneinheit (Sichtgerät, Bedienfeld, Stromversorgung)."],a:3},
+{n:17,c:"A",q:"Wie funktioniert eine Radaranlage?",o:["Die Anzeige wird dadurch ausschließlich farblich verändert.","Diese Funktion ist nur bei Nachtfahrten erforderlich.","Diese Aussage betrifft nur die Tiefenmessung.","Im Sender werden elektromagnetische Impulse erzeugt. Diese werden von der Antenne gebündelt abgestrahlt und breiten sich mit Lichtgeschwindigkeit aus. Rechtwinklig getroffene Impulse kehren als Echopulse zur Antenne zurück; der Empfänger verstärkt sie und das Sichtgerät bildet sie als Lichtzeichen ab."],a:3},
+{n:18,c:"B",q:"In welchem Geräteteil werden die Radarimpulse erzeugt?",o:["Im Wendeanzeiger.","In der Funkanlage auf Kanal 10.","Die Sendeimpulse werden im Sender erzeugt.","Im Sichtgerät."],a:2},
+{n:19,c:"B",q:"Wie gelangen die Radarimpulse vom Sender zur Antenne?",o:["In der Funkanlage auf Kanal 10.","Die Impulse gelangen über den Sende-Empfangs-Umschalter und die Drehkupplung zur Antenne.","Im Sichtgerät.","Im Wendeanzeiger."],a:1},
+{n:20,c:"B",q:"Welche Aufgabe hat der Sende-Empfangs-Umschalter?",o:["Er stellt die Geschwindigkeit des Schiffes ein.","Er schaltet den Funkkanal zwischen 10 und NIF um.","Er erzeugt die Vorauslinie im ECDIS.","Der Sende-Empfangs-Umschalter schaltet die gemeinsame Antenne zum Senden mit dem Radarsender und zum Empfangen mit dem Radarempfänger."],a:3},
+{n:21,c:"B",q:"Wie wird erreicht, dass Antennenstrahlrichtung und Darstellung im Sichtgerät übereinstimmen?",o:["Die Kurswahl wird ausschließlich durch GPS vorgegeben.","Synchrongenerator und Synchronmotor synchronisieren die Antennendrehung mit der Auslenkung des Schreibstrahls in der Bildröhre, wodurch die Darstellung richtungstreu wird.","Die Radaranlage kann dadurch automatisch ohne Bedienung navigieren.","Die Entfernungen werden dabei grundsätzlich nicht beeinflusst."],a:1},
+{n:22,c:"B",q:"Welche Aufgabe hat der Empfänger?",o:["Die Entfernungen werden dabei grundsätzlich nicht beeinflusst.","Die Kurswahl wird ausschließlich durch GPS vorgegeben.","Der Empfänger verstärkt die eintreffenden Echopulse so, dass sie auf dem Bildschirm gut und möglichst mit konstanter Amplitude dargestellt werden. Er besitzt eine zeitabhängige Verstärkung zur Kompensation des Entfernungsabfalls.","Die Anzeige wird dadurch ausschließlich farblich verändert."],a:2},
+{n:23,c:"B",q:"Wie wird das Radarbild auf dem Bildschirm dargestellt?",o:["Als Tiefenprofil des Gewässers.","Als automatisch berechnete Fahrtroute.","Das Radarbild erscheint als landkartenähnliches Bild, das entfernungsrichtig und winkeltreu ist.","Als Farbbild mit Höhenangaben."],a:2},
+{n:24,c:"B",q:"Nennen Sie mindestens sieben Bedienelemente eines Radargeräts.",o:["Diese Aussage betrifft nur die Tiefenmessung.","Ein-/Aus-Schalter, Abstimmung (Tuning), Verstärkung (Gain), Helligkeit (Brilliance), Bereichsschalter (Range), Dezentrierung (Off-Centering), Wellenenttrübung (STC) und Regentrübung (FTC).","Die Einstellung betrifft ausschließlich den Inland-AIS-Empfang.","Die Kurswahl wird ausschließlich durch GPS vorgegeben."],a:1},
+{n:25,c:"B",q:"Welche Funktion hat die Helligkeit?",o:["Sie verstellt die Empfangsfrequenz.","Sie unterdrückt ausschließlich Interferenzen.","Mit der Helligkeit wird die Anzeige oder die Helligkeit einzelner Attribute eingestellt.","Sie verändert die Reichweite der Radarimpulse."],a:2},
+{n:26,c:"B",q:"Welche Funktion hat die Verstärkung?",o:["Sie bestimmt die Länge der Radarantenne.","Sie verändert die Antennendrehzahl.","Sie stellt den Funkkanal ein.","Mit der Verstärkung wird die Verstärkung des Empfängers eingestellt und somit die Amplitude der Echos im Radarbild geregelt."],a:3},
+{n:27,c:"B",q:"Welche Funktion hat die Abstimmung?",o:["Sie verändert den Entfernungsbereich.","Die Abstimmung stellt die Frequenz des Empfängers auf die Frequenz des Senders ein.","Sie löscht Nachleuchtspuren.","Sie schaltet den Wendeanzeiger ein."],a:1},
+{n:28,c:"B",q:"Welche Funktion hat die Wellenenttrübung (STC)?",o:["Sie ist ausschließlich für Funkstörungen vorgesehen.","Sie wirkt nur auf Regen über das gesamte Radarbild.","Die STC vermindert die Empfangsverstärkung im Nahbereich (bis etwa 1,2 km), um die Amplituden von Wellen-Echos zu verkleinern. Der Einsteller darf nur so weit eingedreht werden, dass kleine Nutz-Echos erhalten bleiben, und muss anschließend wieder auf Null gestellt werden.","Sie vergrößert bewusst alle Nahbereichsechos."],a:2},
+{n:29,c:"B",q:"Welche Funktion hat die Regentrübung (FTC)?",o:["Sie wirkt nur im Nahbereich bis ca. 100 m.","Sie ersetzt die STC dauerhaft.","Die Regentrübung dämpft Störechos von Niederschlag über das gesamte Radarbild. Da sich radiale Zielkonturen verkürzen, muss sie nach Bedarf so bald wie möglich zurückgestellt werden.","Sie schaltet die Vorauslinie aus."],a:2},
+{n:30,c:"B",q:"Welche Funktion hat die Dezentrierung?",o:["Sie ist ausschließlich für den Stillstand am Liegeplatz vorgesehen.","Die Dezentrierung verschiebt den Mittelpunkt des Radarbildes nach unten (achtern), um eine größere Voraussicht nach vorn zu erhalten. Dies geht auf Kosten der Sicht nach hinten.","Sie verändert den Maßstab des gesamten Radarbildes.","Sie macht aus dem Radarbild ein Tiefenprofil."],a:1},
+{n:31,c:"B",q:"Welche Funktion hat der Bereichsschalter?",o:["Der Bereichsschalter wählt den Entfernungsbereich aus.","Er wählt den Funkkanal.","Er zeigt die Wassertiefe an.","Er stellt die Sendeleistung auf Null."],a:0},
+{n:32,c:"B",q:"Warum gibt es die Schalterstellung ‚Bereitschaft'?",o:["Diese Aussage betrifft nur die Tiefenmessung.","Im Bereitschaftsbetrieb wird die Magnetronröhre vorgeheizt. Dadurch kann nach dem Aufheizen ohne weitere Wartezeit auf ‚Betrieb' geschaltet werden.","Die Einstellung betrifft ausschließlich den Inland-AIS-Empfang.","Dies ist nur für Seeschiffe auf offener See vorgeschrieben."],a:1},
+{n:33,c:"B",q:"Welche Organisation legt die Mindestanforderungen für Radaranlagen auf dem Rhein fest?",o:["Die örtliche Wasserschutzpolizei alleine.","Der Gerätehersteller ohne Zulassungsverfahren.","Die Zentralkommission für die Rheinschifffahrt (ZKR) bestimmt die technischen Mindestanforderungen.","Der jeweilige Hafenmeister."],a:2},
+{n:34,c:"B",q:"Darf jedes Radargerät auf dem Rhein verwendet werden?",o:["Die Anlage ersetzt die Funkabsprache vollständig.","Nein, es dürfen nur zugelassene Baumuster verwendet werden; das Gerät selbst muss zugelassen sein.","Diese Aussage betrifft nur die Tiefenmessung.","Die Entfernungen werden dabei grundsätzlich nicht beeinflusst."],a:1},
+{n:35,c:"B",q:"Bis wann muss eine Radaranlage betriebsbereit sein?",o:["Die Maßnahme ist bei guter Sicht und unsichtigem Wetter verboten.","Die Kurswahl wird ausschließlich durch GPS vorgegeben.","Die Radaranlage muss spätestens nach vier Minuten betriebsbereit sein.","Die Einstellung betrifft ausschließlich den Inland-AIS-Empfang."],a:2},
+{n:36,c:"B",q:"Welche Anforderung gilt für die Winkelauflösung?",o:["Unter einem möglichst flachen Winkel.","Die Winkelauflösung darf nicht schlechter als 1,2° sein.","Unter einem Winkel von etwa 45°.","Der Winkel spielt für den Echoempfang keine Rolle."],a:1},
+{n:37,c:"B",q:"Welche Anforderung gilt für die Entfernungsauflösung?",o:["Sie wird nur durch Funkkanal 10 bestimmt.","Sie muss 300 m/µs betragen.","Sie darf nicht schlechter als 1,2° sein.","Die Entfernungsauflösung darf bis einschließlich 1.200 m nicht schlechter als 15 m sein."],a:3},
+{n:38,c:"B",q:"Welche Anforderung gilt für die Nahauflösung?",o:["Sie darf nicht schlechter als 1.200 m sein.","Sie hängt ausschließlich von der Helligkeit ab.","Sie ist nur bei AIS-Betrieb erforderlich.","Die Nahauflösung darf nicht schlechter als 15 m sein."],a:3},
+{n:39,c:"B",q:"Welche Entfernungsbereiche müssen vorhanden sein?",o:["1 km, 2 km, 3 km und 5 km.","Es gibt keine vorgeschriebenen Entfernungsbereiche.","Die Entfernungsbereiche 500 m, 800 m, 1.200 m, 1.600 m, 2.000 m und 4.000 m müssen schaltbar sein.","100 m, 200 m, 300 m und 400 m."],a:2},
+{n:40,c:"B",q:"Wie groß ist die Betriebsfrequenz von Binnenschiffradaranlagen?",o:["330 Hz.","156 bis 162 MHz.","Binnenschiffradaranlagen arbeiten mit einer Frequenz von 9.400 ± 40 MHz (9.300 – 9.500 MHz).","2.400 ± 40 MHz."],a:2},
+{n:41,c:"B",q:"Wie groß ist die mittlere Sendeleistung?",o:["Zwischen 50 und 300 Watt.","Je nach Entfernungsbereich liegt die mittlere Sendeleistung zwischen 0,5 W und 3 W.","Höchstens 5 kW + 3 dB.","Konstant 0 Watt im Betrieb."],a:1},
+{n:42,c:"B",q:"Wie groß ist die maximale Sendeleistung?",o:["Mindestens 27 cm.","Die Sendeleistung tritt nur während des Sendeimpulses auf und darf höchstens 5 kW + 3 dB betragen.","Genau 300 m/µs.","Höchstens 3 Watt."],a:1},
+{n:43,c:"B",q:"Wie lang darf der Sendeimpuls dauern, um die geforderte radiale Auflösung zu erreichen?",o:["Diese Funktion ist nur bei Nachtfahrten erforderlich.","Die Entfernungen werden dabei grundsätzlich nicht beeinflusst.","Die Sendeimpulsdauer darf in Entfernungsbereichen unter 2 km maximal 0,05 µs betragen.","Die Anzeige wird dadurch ausschließlich farblich verändert."],a:2},
+{n:44,c:"B",q:"Wie groß ist das Radarbild mindestens?",o:["Dies ist nur für Seeschiffe auf offener See vorgeschrieben.","Die Entfernungen werden dabei grundsätzlich nicht beeinflusst.","Der Durchmesser eines runden Bildschirms oder die schmale Kante eines rechteckigen Bildschirms muss mindestens 27 cm betragen; der Entfernungsring muss mindestens 90 % davon erreichen.","Diese Aussage betrifft nur die Tiefenmessung."],a:2},
+{n:45,c:"B",q:"Wie viele Impulse werden pro Sekunde ausgesendet?",o:["Etwa 156 bis 162 Hz.","Etwa 10 bis 50 Hz.","Immer exakt 300 Hz.","Die Impulsfolgefrequenz liegt je nach Hersteller und Entfernungsbereich zwischen 1.000 Hz und 5.000 Hz."],a:3},
+{n:46,c:"B",q:"Welchen Weg legt ein Sendeimpuls in 0,05 µs zurück?",o:["Etwa 1.200 Meter.","Etwa 150 Meter.","In 0,05 µs wird eine Strecke von etwa 15 m zurückgelegt.","Etwa 1,5 Meter."],a:2},
+{n:47,c:"B",q:"Warum wird eine Richtantenne und kein Rundstrahler eingesetzt?",o:["Ein Rundstrahler ist vorgeschrieben, weil er Richtung und Entfernung besser trennt.","Die Antennenform hat für die Richtungsbestimmung keine Bedeutung.","Eine Richtantenne ermöglicht die gleichzeitige Bestimmung von Richtung und Entfernung. Ein Rundstrahler würde zwar Entfernungen liefern, aber keine Richtungen.","Eine Richtantenne verhindert grundsätzlich alle Störungen."],a:2},
+{n:48,c:"C",q:"Wie erkennt man, ob andere Fahrzeuge zu Berg, zu Tal fahren oder stillliegen?",o:["Die Anzeige wird dadurch ausschließlich farblich verändert.","Die Einstellung betrifft ausschließlich den Inland-AIS-Empfang.","Diese Funktion ist nur bei Nachtfahrten erforderlich.","Die Position des Fahrzeugs wird über mehrere Antennenumdrehungen verfolgt und mit der eigenen Position und dem Ufer verglichen."],a:3},
+{n:49,c:"C",q:"Wodurch ist ein stillliegendes Fahrzeug zu erkennen?",o:["Ein Stilllieger ist daran zu erkennen, dass er sich gegenüber seiner Umgebung nicht bewegt.","Er bewegt sich immer schneller als das eigene Schiff.","Er wird nur durch seine Funkmeldung erkannt.","Er erscheint grundsätzlich gar nicht im Radarbild."],a:0},
+{n:50,c:"C",q:"Wie bewegt sich das Echo eines langsameren Vorausfahrers im Radarbild?",o:["Mit der Differenz aus Lichtgeschwindigkeit und Schiffsgeschwindigkeit.","Das Echo eines langsameren Vorausfahrers bewegt sich mit der Differenzgeschwindigkeit langsam auf das eigene Schiff zu.","Mit nur der eigenen Geschwindigkeit.","Eine Annäherung ist im Radarbild nicht erkennbar."],a:1},
+{n:51,c:"C",q:"Wie bewegt sich das Echo eines Stillliegers im Radarbild?",o:["Er erscheint grundsätzlich gar nicht im Radarbild.","Das Echo eines stillliegenden Fahrzeugs bewegt sich mit der eigenen Geschwindigkeit auf das Schiff zu.","Er wird nur durch seine Funkmeldung erkannt.","Er bewegt sich immer schneller als das eigene Schiff."],a:1},
+{n:52,c:"C",q:"Mit welcher Geschwindigkeit nähert sich ein entgegenkommendes Fahrzeug?",o:["Eine Annäherung ist im Radarbild nicht erkennbar.","Mit nur der eigenen Geschwindigkeit.","Mit der Differenz aus Lichtgeschwindigkeit und Schiffsgeschwindigkeit.","Die Annäherung erfolgt mit der Summe aus seiner und der eigenen Geschwindigkeit."],a:3},
+{n:53,c:"C",q:"Warum scheint ein schnell entgegenkommendes Fahrzeug im Radarbild zu springen?",o:["Weil das Radarbild nur alle 2,5 Sekunden erneuert wird, erscheint das Fahrzeug auf der neuen Position deutlich näher.","Mit nur der eigenen Geschwindigkeit.","Eine Annäherung ist im Radarbild nicht erkennbar.","Mit der Differenz aus Lichtgeschwindigkeit und Schiffsgeschwindigkeit."],a:0},
+{n:54,c:"C",q:"Welche Hilfen bieten die festen und der variable Entfernungsring?",o:["Diese Funktion ist nur bei Nachtfahrten erforderlich.","Die Kurswahl wird ausschließlich durch GPS vorgegeben.","Die Anzeige wird dadurch ausschließlich farblich verändert.","Feste Entfernungsringe erlauben eine grobe Abschätzung von Entfernungen; der variable Entfernungsring ermöglicht eine genaue Messung zu beliebigen Objekten."],a:3},
+{n:55,c:"C",q:"Welche Informationen liefert eine Nachleuchtspur?",o:["Sie dient ausschließlich zur Helligkeitseinstellung.","Sie ersetzt die Funkabsprache bei Begegnungen.","Nachleuchtspuren unterstützen, das Verhalten anderer Verkehrsteilnehmer frühzeitig zu erkennen.","Sie zeigt die Wassertiefe hinter dem Schiff."],a:2},
+{n:56,c:"C",q:"Wie wirkt sich Dezentrieren des Radarbilds aus?",o:["Die Maßnahme ist bei guter Sicht und unsichtigem Wetter verboten.","Durch das Verschieben des Bildmittelpunkts nach unten wird die Sicht nach vorn erweitert, weshalb entgegenkommende Fahrzeuge früher erkannt werden; der Maßstab bleibt unverändert.","Die Einstellung betrifft ausschließlich den Inland-AIS-Empfang.","Diese Funktion ist nur bei Nachtfahrten erforderlich."],a:1},
+{n:57,c:"C",q:"Welche Information liefert die Vorauslinie?",o:["Sie ist eine Markierung des nächsten Funkkanals.","Die Vorauslinie zeigt den Kurs des Fahrzeugs und die eigene Position im Radarbild der Umgebung an.","Sie zeigt die Wasserstandshöhe.","Sie zeigt ausschließlich die Strömungsrichtung."],a:1},
+{n:58,c:"C",q:"Welche Grenzen bestehen hinsichtlich der Radarbildinformation?",o:["Die Entfernungen werden dabei grundsätzlich nicht beeinflusst.","Die Einstellung betrifft ausschließlich den Inland-AIS-Empfang.","Die Anlage ersetzt die Funkabsprache vollständig.","Das Radar kann nicht um die Ecke sehen; unterhalb der Nahauflösung werden keine Ziele dargestellt; radial oder azimutal dicht benachbarte Ziele werden nicht getrennt; kleine Objekte hinter großen Objekten bleiben unsichtbar; Schrift, Farbe und Höheninformationen werden nicht dargestellt."],a:3},
+{n:59,c:"D",q:"Was ist ein Radarschatten?",o:["Eine Anzeige des nächsten Liegeplatzes.","Ein Radarschatten ist ein Bereich, in dem der Radarstrahl durch Hindernisse blockiert wird, beispielsweise hinter Kurven, Brückenpfeilern oder hohen Schiffen.","Ein automatisch berechneter Sicherheitsabstand.","Ein Bereich mit besonders starken Echos."],a:1},
+{n:60,c:"D",q:"Welche Vorsichtsmaßnahmen sind bei Radarschatten zu beachten?",o:["Ein automatisch berechneter Sicherheitsabstand.","Eine Anzeige des nächsten Liegeplatzes.","Ein Bereich mit besonders starken Echos.","Es ist vorsichtig zu fahren; Funkabsprache und akustische Signale sind zu geben, um Konflikte zu vermeiden."],a:3},
+{n:61,c:"D",q:"Welche Störungen können Regen, Schnee oder Hagel verursachen und wie können sie vermindert werden?",o:["Die Störung wird ausschließlich mit dem Bereichsschalter beseitigt.","Die Anlage muss sofort ausgeschaltet werden.","Niederschlag erzeugt helle Flächen und Echos. Diese Störechos können mit der Regentrübung (FTC) reduziert werden. Die FTC verkürzt radiale Zielkonturen und sollte nur kurzzeitig verwendet werden.","Niederschlag hat keine Auswirkung auf das Radarbild."],a:2},
+{n:62,c:"D",q:"Wie wirkt sich Wellengang auf die Bilddarstellung aus und wie werden diese Störungen vermindert?",o:["Wellengang erzeugt Helligkeit im Nahbereich, weil die Impulse rechtwinklig auf Wellenflanken treffen. Mit der Wellenenttrübung (STC) können diese Störungen vermindert werden, wobei die STC anschließend wieder auf Null gestellt werden muss.","Die Störung wird mit FTC dauerhaft beseitigt.","Wellengang erzeugt nur Echos im Fernbereich ab 4.000 m.","Wellengang kann im Radarbild nicht auftreten."],a:0},
+{n:63,c:"D",q:"Was versteht man unter Aufsplittung der Antennenkeule?",o:["Wird die Antenne durch einen Mast oder anderes Hindernis teilweise verdeckt, wird der Sendestrahl aufgesplittet, so dass das Ziel breiter oder mehrfach dargestellt wird.","Die Maßnahme ist bei guter Sicht und unsichtigem Wetter verboten.","Dies ist nur für Seeschiffe auf offener See vorgeschrieben.","Diese Funktion ist nur bei Nachtfahrten erforderlich."],a:0},
+{n:64,c:"D",q:"Was versteht man unter Mehrfach-Echos?",o:["Die Maßnahme ist bei guter Sicht und unsichtigem Wetter verboten.","Dies ist nur für Seeschiffe auf offener See vorgeschrieben.","Mehrfach-Echos entstehen durch Mehrfachreflexion zwischen parallelen Flächen. Das innerste Echo gehört zum wahren Objekt; zusätzliche Echos sind Scheinziele.","Diese Aussage betrifft nur die Tiefenmessung."],a:2},
+{n:65,c:"D",q:"Was versteht man unter Interferenzen und wie können sie verhindert werden?",o:["Interferenzen entstehen, wenn Radarsignale anderer Geräte empfangen werden und als radiale Linien oder Spiralen erscheinen. Durch Einschalten der Interferenzunterdrückung können diese Störungen beseitigt werden.","Interferenzen sind Schallsignale anderer Fahrzeuge.","Interferenzen werden durch Erhöhung der Helligkeit sicher beseitigt.","Interferenzen entstehen nur durch Wind."],a:0},
+{n:66,c:"D",q:"Welche Maßnahmen sind vor Inbetriebnahme der Radaranlage zu treffen?",o:["Die Magnetronröhre muss vorgeheizt werden; das Schiffspersonal wird informiert und Rollen werden verteilt; die Antenne wird auf freie Drehbarkeit geprüft.","Diese Aussage betrifft nur die Tiefenmessung.","Dies ist nur für Seeschiffe auf offener See vorgeschrieben.","Die Radaranlage kann dadurch automatisch ohne Bedienung navigieren."],a:0},
+{n:67,c:"D",q:"Welche Bedeutung hat die Schalterstellung ‚Bereitschaft'?",o:["Die Anzeige wird dadurch ausschließlich farblich verändert.","Die Anlage ersetzt die Funkabsprache vollständig.","Die Magnetronröhre wird vorgeheizt, damit anschließend ohne Wartezeit auf ‚Betrieb' geschaltet werden kann.","Die Maßnahme ist bei guter Sicht und unsichtigem Wetter verboten."],a:2},
+{n:68,c:"D",q:"Wie wird die Verstärkung richtig eingestellt?",o:["Die Verstärkung wird zunächst voll aufgedreht und dann so weit zurückgenommen, bis Störungen möglichst klein sind, jedoch die kleinsten Nutz-Echos sichtbar bleiben.","Sie bestimmt die Länge der Radarantenne.","Sie stellt den Funkkanal ein.","Sie verändert die Antennendrehzahl."],a:0},
+{n:69,c:"D",q:"Bis zu welcher Entfernung wirkt die Wellenenttrübung (STC)?",o:["Die STC wirkt bis zu etwa 1.200 m vom Zentrum des Radarbildes.","Sie vergrößert bewusst alle Nahbereichsechos.","Sie wirkt nur auf Regen über das gesamte Radarbild.","Sie ist ausschließlich für Funkstörungen vorgesehen."],a:0},
+{n:70,c:"D",q:"Bis zu welcher Entfernung wirkt die Regentrübung (FTC)?",o:["Die Regentrübung wirkt über das gesamte Radarbild.","Sie ersetzt die STC dauerhaft.","Sie schaltet die Vorauslinie aus.","Sie wirkt nur im Nahbereich bis ca. 100 m."],a:0},
+{n:71,c:"D",q:"Wovon hängt die Qualität des Radarbilds ab?",o:["Diese Aussage betrifft nur die Tiefenmessung.","Die Radaranlage kann dadurch automatisch ohne Bedienung navigieren.","Von einer optimalen Abstimmung, der korrekten Einstellung von Helligkeit und Verstärkung, der richtigen Verwendung von STC und FTC, der passenden Wahl des Entfernungsbereichs und der sinnvollen Anwendung von Zentrieren und Dezentrieren.","Die Kurswahl wird ausschließlich durch GPS vorgegeben."],a:2},
+{n:72,c:"E",q:"Auf welchem Prinzip beruht der Wendeanzeiger?",o:["Er zeigt nur die Wassertiefe an.","Er zeigt die seitliche Abdrift exakt an.","Er ersetzt die Beobachtung des Radarbildes vollständig.","Er beruht auf der Nutzung der Eigenschaften eines Kreisels."],a:3},
+{n:73,c:"E",q:"Welche Bewegung zeigt der Wendeanzeiger an?",o:["Der Wendeanzeiger zeigt die Drehgeschwindigkeit des Fahrzeugs nach Backbord oder Steuerbord in Grad pro Minute an.","Er ersetzt die Beobachtung des Radarbildes vollständig.","Er zeigt nur die Wassertiefe an.","Er zeigt die seitliche Abdrift exakt an."],a:0},
+{n:74,c:"E",q:"Welche Bewegung zeigt der Wendeanzeiger nicht an?",o:["Seitliche Abdrift wird nicht angezeigt.","Er zeigt die seitliche Abdrift exakt an.","Er ersetzt die Beobachtung des Radarbildes vollständig.","Er zeigt nur die Wassertiefe an."],a:0},
+{n:75,c:"E",q:"Welche Rechtsvorschriften regeln die Fahrt mit Radar?",o:["Nur die Gebrauchsanweisung des Radargeräts.","Die BinSchStrO, die RheinSchPV, die MoselSchPV und die DonauSchPV regeln die Radarfahrt.","Ausschließlich die Straßenverkehrs-Ordnung.","Nur die örtliche Hafenordnung."],a:1},
+{n:76,c:"E",q:"Wie muss bei unsichtigem Wetter mit Radar gefahren werden?",o:["Die Geschwindigkeit ist stets zu erhöhen.","Die Fahrt wird grundsätzlich ohne Funk fortgesetzt.","Schallsignale und Funkabsprachen sind nicht erforderlich.","Es wird ein klarer Kurs gehalten; Funk (Kanal 10 und NIF) wird abgehört und es wird reagiert; die Geschwindigkeit wird angepasst; Lichter werden gesetzt; bei Bedarf wird ein langer Ton gegeben; bei Begegnungen werden Kursabsprachen über Kanal 10 durchgeführt."],a:3},
+{n:77,c:"E",q:"Welche Angaben muss eine Kursabsprache enthalten?",o:["Eine Kursabsprache erfolgt ausschließlich schriftlich.","Sie muss Typ und Name des Fahrzeugs, Standort und Fahrtrichtung sowie das Vorhaben (z. B. ob mit oder ohne Blaue Tafel und Blinklicht gefahren wird) enthalten.","Nur die Motordrehzahl ist mitzuteilen.","Nur der Schiffsname ist mitzuteilen."],a:1},
+{n:78,c:"E",q:"Wer bestimmt den Kurs bei Begegnungen unter Radar?",o:["Der bergfahrende Radarführer bestimmt den Kurs.","Dies ist nur für Seeschiffe auf offener See vorgeschrieben.","Die Anlage ersetzt die Funkabsprache vollständig.","Die Radaranlage kann dadurch automatisch ohne Bedienung navigieren."],a:0},
+{n:79,c:"E",q:"Wie reagiert ein Talfahrer auf eine Kursanweisung des Bergfahrers?",o:["Der Kurs wird ausschließlich vom Stilllieger bestimmt.","Eine Kursbestimmung findet bei Radar nicht statt.","Immer der Talfahrer bestimmt den Kurs.","Der Talfahrer antwortet mit Typ und Name seines Fahrzeugs, Standort und Fahrtrichtung und bestätigt, ob er mit oder ohne Blaue Tafel und Blinklicht fährt."],a:3},
+{n:80,c:"E",q:"Welche zusätzlichen Geräte muss ein radartaugliches Schiff besitzen?",o:["Ein GPS-Gerät und ein Mobiltelefon reichen aus.","Es wird ausschließlich Inland-AIS benötigt.","Nur ein Echolot und eine Hupe.","Ein zugelassenes Radargerät, zwei Funkanlagen (Kanal 10 und NIF-Kanäle 18, 20, 22), einen Wendeanzeiger und einen Schallsignalgeber."],a:3},
+{n:81,c:"E",q:"Welche Qualifikation muss der Schiffsführer für die Radarfahrt besitzen?",o:["Ein Sprechfunkzeugnis ist grundsätzlich nicht erforderlich.","Es ist nur eine Einweisung durch den Gerätehersteller nötig.","Er muss neben der besonderen Berechtigung für Radarfahrten auch ein Patent für die befahrene Strecke und die Fahrzeugart besitzen und im Besitz eines UKW-Sprechfunkzeugnisses sein.","Es reicht ein Sportbootführerschein ohne weitere Berechtigung."],a:2},
+{n:82,c:"E",q:"Wie muss ein Steuerhaus mit Radar-Zweimannsteuerstand während der Radarfahrt besetzt sein?",o:["Der Rudergänger muss das Radarbild nicht kennen.","Es darf sich keine zweite Person an Bord befinden.","Der Inhaber der besonderen Berechtigung überwacht das Radargerät, eine zweite mit Radar vertraute Person führt das Ruder.","Die Besetzung ist bei Radar ohne Bedeutung."],a:2},
+{n:83,c:"E",q:"Wie muss ein Steuerhaus mit Radar-Einmannsteuerstand besetzt sein?",o:["Es darf sich keine zweite Person an Bord befinden.","Der Inhaber der besonderen Berechtigung überwacht das Radargerät und steuert das Schiff; eine zweite Person, die mit Radar vertraut ist, muss sich an Bord aufhalten und in Rufbereitschaft sein.","Der Rudergänger muss das Radarbild nicht kennen.","Die Besetzung ist bei Radar ohne Bedeutung."],a:1}
+];
+
+/* ==== STAN ==== */
+const KEY="radarTrainer.v1";
+let mem={};
+function load(){ try{ return JSON.parse(localStorage.getItem(KEY))||{} }catch(e){ return mem } }
+function save(s){ try{ localStorage.setItem(KEY,JSON.stringify(s)) }catch(e){ mem=s } }
+let S=load(); S.q=S.q||{}; S.exams=S.exams||[];
+const byN={}; Q.forEach(q=>byN[q.n]=q);
+
+function qs(id){ return S.q[id]||(S.q[id]={seen:0,right:0,wrong:0,box:-1}) } // box -1 = nieznane
+function mastered(id){ return (S.q[id]&&S.q[id].box>=2) }
+function answered(id,ok){
+  const st=qs(id); st.seen++;
+  if(ok){ st.right++; st.box=Math.min(4,Math.max(0,st.box)+1) } else { st.wrong++; st.box=0 }
+  save(S);
+}
+const PASS=0.6;
+
+/* ==== POMOCNICZE ==== */
+function armTwice(btn,label,fn){ // potwierdzenie bez confirm() — działa też w sandboxie
+  let armed=false,t=null; const orig=btn.textContent;
+  btn.onclick=()=>{ if(armed){ clearTimeout(t); fn() } else { armed=true; btn.textContent=label;
+    t=setTimeout(()=>{ armed=false; btn.textContent=orig },2500) } };
+}
+function shuffle(arr){ const a=arr.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]] } return a }
+function esc(s){ return s.replace(/&/g,"&amp;").replace(/</g,"&lt;") }
+function el(id){ return document.getElementById(id) }
+const view=el("view");
+
+function masteryPct(){ return Math.round(100*Q.filter(q=>mastered(q.n)).length/Q.length) }
+function catStats(){
+  const out={};
+  for(const k in CATS){
+    const qq=Q.filter(q=>q.c===k);
+    out[k]={total:qq.length, m:qq.filter(q=>mastered(q.n)).length,
+            wrong:qq.filter(q=>S.q[q.n]&&S.q[q.n].box===0&&S.q[q.n].seen>0).length};
+  }
+  return out;
+}
+function hdr(){ el("hdr-stat").textContent = masteryPct()+"% beherrscht" }
+
+/* ==== RADAR SCOPE ==== */
+let sweepAngle=0, scopeRAF=null;
+function drawScope(){
+  const cv=el("scope"); if(!cv) return;
+  const dpr=window.devicePixelRatio||1, w=148*dpr; cv.width=w; cv.height=w;
+  const ctx=cv.getContext("2d"), c=w/2, R=w/2-2*dpr;
+  const css=getComputedStyle(document.documentElement);
+  const lineC=css.getPropertyValue("--scope-line"), blipC=css.getPropertyValue("--scope-blip");
+  ctx.clearRect(0,0,w,w);
+  ctx.strokeStyle=lineC; ctx.lineWidth=1*dpr;
+  for(const r of [.33,.66,1]){ ctx.beginPath(); ctx.arc(c,c,R*r,0,7); ctx.stroke() }
+  ctx.beginPath(); ctx.moveTo(c-R,c); ctx.lineTo(c+R,c); ctx.moveTo(c,c-R); ctx.lineTo(c,c+R); ctx.stroke();
+  // blipy = opanowane pytania (pozycja deterministyczna z numeru pytania)
+  ctx.fillStyle=blipC;
+  for(const q of Q){ if(!mastered(q.n)) continue;
+    const ang=(q.n*2.399963)%(2*Math.PI), rad=R*(0.18+0.75*((q.n*0.618034)%1));
+    ctx.beginPath(); ctx.arc(c+rad*Math.cos(ang), c+rad*Math.sin(ang), 2.2*dpr, 0, 7); ctx.fill();
+  }
+  // wiązka
+  const grad=ctx.createConicGradient ? (()=>{ const g=ctx.createConicGradient(sweepAngle,c,c);
+    g.addColorStop(0,"rgba(63,201,147,.55)"); g.addColorStop(.12,"rgba(63,201,147,0)"); g.addColorStop(1,"rgba(63,201,147,0)"); return g })() : null;
+  if(grad){ ctx.fillStyle=grad; ctx.beginPath(); ctx.moveTo(c,c); ctx.arc(c,c,R,sweepAngle-0.9,sweepAngle); ctx.closePath(); ctx.fill() }
+  ctx.strokeStyle=blipC; ctx.lineWidth=1.5*dpr; ctx.beginPath(); ctx.moveTo(c,c);
+  ctx.lineTo(c+R*Math.cos(sweepAngle), c+R*Math.sin(sweepAngle)); ctx.stroke();
+}
+function animScope(){
+  if(!el("scope")){ scopeRAF=null; return }
+  if(!matchMedia("(prefers-reduced-motion: reduce)").matches){ sweepAngle+=0.02 }
+  drawScope(); scopeRAF=requestAnimationFrame(animScope);
+}
+
+/* ==== WIDOKI ==== */
+let current="home";
+function go(v){ current=v; document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("on",t.dataset.v===v));
+  if(scopeRAF){ cancelAnimationFrame(scopeRAF); scopeRAF=null }
+  ({home,nauka,trening,egzamin})[v](); hdr(); window.scrollTo(0,0);
+}
+
+function home(){
+  const cs=catStats(), pct=masteryPct();
+  const last=S.exams.slice(-6).reverse();
+  const resume=egz&&egz.active;
+  view.innerHTML=`
+  <div class="card">
+    <div class="eyebrow">Prüfungsbereitschaft · Bestehensgrenze 60 %</div>
+    <div class="scopewrap" style="margin-top:10px">
+      <canvas id="scope" width="148" height="148" aria-label="Fortschrittsradar"></canvas>
+      <div class="grow">
+        <div class="bigpct">${pct}%</div>
+        <div class="muted" style="font-size:13.5px;margin-top:4px">der Fragen sicher beherrscht (${Q.filter(q=>mastered(q.n)).length}/83). Eine Frage gilt als beherrscht nach 2 richtigen Antworten in Folge.</div>
+      </div>
+    </div>
+    <div class="bars">${Object.keys(CATS).map(k=>{
+      const s=cs[k], p=Math.round(100*s.m/s.total);
+      return `<div class="bar"><span class="lbl">${k}</span><div class="track"><div class="fill" style="width:${p}%"></div></div><span class="lbl num">${s.m}/${s.total}</span></div>`
+    }).join("")}</div>
+  </div>
+  <div class="card stack">
+    ${resume?`<button class="btn primary" id="go-resume">Prüfung fortsetzen (${egz.i+1}/${egz.list.length})</button>`:""}
+    <button class="btn ${resume?"":"primary"}" id="go-tren">Training — intelligente Wiederholung</button>
+    <button class="btn" id="go-egz">${resume?"Prüfung":"Probeprüfung"}</button>
+    <button class="btn ghost" id="go-nauka">Fragenkatalog durchsehen</button>
+  </div>
+  ${last.length?`<div class="card">
+    <h2>Letzte Prüfungen</h2>
+    <table class="hist">${last.map(e=>`<tr>
+      <td class="muted">${e.date}</td><td class="num">${e.correct}/${e.total} (${Math.round(100*e.correct/e.total)}%)</td>
+      <td class="passflag ${e.pass?"ok":"bad"}">${e.pass?"BESTANDEN":"NICHT BESTANDEN"}</td></tr>`).join("")}</table>
+  </div>`:""}
+  <div class="row" style="justify-content:flex-end"><button class="btn small ghost danger" id="reset">Fortschritt zurücksetzen</button></div>`;
+  if(resume) el("go-resume").onclick=()=>go("egzamin");
+  el("go-tren").onclick=()=>go("trening"); el("go-egz").onclick=()=>go("egzamin"); el("go-nauka").onclick=()=>go("nauka");
+  armTwice(el("reset"),"Zum Bestätigen erneut tippen",()=>{ S={q:{},exams:[]}; save(S); egz=null; go("home") });
+  animScope();
+}
+
+/* --- NAUKA --- */
+let naukaFilter="all";
+function nauka(){
+  const groups=Object.keys(CATS).map(k=>{
+    let qq=Q.filter(q=>q.c===k);
+    if(naukaFilter==="wrong") qq=qq.filter(q=>S.q[q.n]&&S.q[q.n].box===0&&S.q[q.n].seen>0);
+    if(!qq.length) return "";
+    return `<div class="card">
+      <div class="eyebrow" style="margin-bottom:10px">${k} · ${esc(CATS[k])}</div>
+      <div class="stack" style="gap:8px">${qq.map(q=>{
+        const st=S.q[q.n]; const m=!st||st.seen===0?"m0":(st.box>=2?"m2":(st.box===0?"mx":"m1"));
+        return `<details class="qa"><summary><span class="dot ${m}"></span><span class="qno num">${q.n}.</span><span>${esc(q.q)}</span></summary>
+        <div class="ans"><b>✓</b> ${esc(q.o[q.a])}</div></details>`
+      }).join("")}</div></div>`
+  }).join("");
+  view.innerHTML=`
+  <div class="chips">
+    <button class="chip ${naukaFilter==="all"?"on":""}" data-f="all">Alle (83)</button>
+    <button class="chip ${naukaFilter==="wrong"?"on":""}" data-f="wrong">Meine Fehler</button>
+  </div>
+  ${groups||'<div class="card muted">Keine Fragen in diesem Filter — aktuell keine offenen Fehler. 💪</div>'}`;
+  document.querySelectorAll(".chip").forEach(c=>c.onclick=()=>{ naukaFilter=c.dataset.f; nauka() });
+}
+
+/* --- WSPÓLNE: render pytania --- */
+function renderQuestion(q,{instant,onAnswer,progress,footer}){
+  const order=shuffle([0,1,2,3]);
+  const letters=["A","B","C","D"];
+  view.innerHTML=`
+  ${progress||""}
+  <div class="card">
+    <div class="qcat">Frage ${q.n} · ${esc(CATS[q.c])}</div>
+    <p class="qtext">${esc(q.q)}</p>
+    <div class="opts">${order.map((oi,i)=>`<button class="opt" data-oi="${oi}"><b class="num">${letters[i]})</b> ${esc(q.o[oi])}</button>`).join("")}</div>
+    <div id="feedback"></div>
+  </div>
+  ${footer||""}`;
+  document.querySelectorAll(".opt").forEach(btn=>btn.onclick=()=>{
+    const oi=+btn.dataset.oi, ok=oi===q.a;
+    if(instant){
+      document.querySelectorAll(".opt").forEach(b=>{ b.disabled=true;
+        if(+b.dataset.oi===q.a) b.classList.add("right");
+        else if(+b.dataset.oi===oi) b.classList.add("wrong");
+      });
+      el("feedback").innerHTML=`<div class="verdict ${ok?"ok":"bad"}">${ok?"Richtig!":"Falsch — die richtige Antwort ist grün markiert."}</div>
+        <div class="row" style="margin-top:10px"><button class="btn primary grow" id="next">Weiter</button></div>`;
+      el("next").onclick=()=>onAnswer(ok); el("next").focus();
+    } else onAnswer(ok,oi);
+  });
+}
+
+/* --- TRENING --- */
+let tren={count:0,ok:0};
+function pickTraining(){
+  const weights=Q.map(q=>{ const st=S.q[q.n];
+    if(!st||st.seen===0) return 6;
+    return [8,4,2,1,0.5][Math.min(4,st.box)];
+  });
+  let sum=weights.reduce((a,b)=>a+b,0), r=Math.random()*sum;
+  for(let i=0;i<Q.length;i++){ r-=weights[i]; if(r<=0) return Q[i] }
+  return Q[Q.length-1];
+}
+function trening(){
+  const q=pickTraining();
+  renderQuestion(q,{
+    instant:true,
+    progress:`<div class="row" style="justify-content:space-between">
+      <span class="eyebrow">Training · Sitzung</span>
+      <span class="kbd num">${tren.ok}/${tren.count} richtig</span></div>`,
+    onAnswer:(ok)=>{ answered(q.n,ok); tren.count++; if(ok)tren.ok++; trening(); hdr() },
+    footer:`<button class="btn ghost" id="end-tren">Training beenden</button>`
+  });
+  el("end-tren").onclick=()=>{ tren={count:0,ok:0}; go("home") };
+}
+
+/* --- EGZAMIN --- */
+let egz=null;
+function persistExam(){ // rozpoczęta próba przeżywa zamknięcie karty/przeglądarki
+  if(egz&&egz.active) S.examActive={list:egz.list.map(q=>q.n),i:egz.i,answers:egz.answers.map(a=>({n:a.q.n,oi:a.oi,ok:a.ok}))};
+  else delete S.examActive;
+  save(S);
+}
+function restoreExam(){
+  const e=S.examActive; if(!e||!e.list) return;
+  egz={active:true,list:e.list.map(n=>byN[n]),i:e.i,answers:e.answers.map(a=>({q:byN[a.n],oi:a.oi,ok:a.ok}))};
+}
+function egzamin(){
+  if(egz&&egz.active){ egzQuestion(); return }
+  view.innerHTML=`
+  <div class="card stack">
+    <div><div class="eyebrow">Probeprüfung</div>
+    <h2 style="margin-top:6px">Umfang wählen</h2>
+    <p class="muted" style="font-size:14px;margin:4px 0 0">Keine Rückmeldung während der Prüfung. Ergebnis und Fehlerbesprechung am Ende. Bestehensgrenze: 60 % richtige Antworten. Eine begonnene Prüfung wird gespeichert — du kannst jederzeit zurückkehren.</p></div>
+    <div class="row">
+      <button class="btn grow" data-n="20">20 Fragen<br><small class="muted num">bestanden ab 12</small></button>
+      <button class="btn grow" data-n="40">40 Fragen<br><small class="muted num">bestanden ab 24</small></button>
+      <button class="btn primary grow" data-n="83">Kompletter Bogen 83<br><small class="num" style="opacity:.8">bestanden ab 50</small></button>
+    </div>
+  </div>`;
+  document.querySelectorAll("[data-n]").forEach(b=>b.onclick=()=>{
+    const n=+b.dataset.n;
+    egz={active:true,list:shuffle(Q).slice(0,n),i:0,answers:[]};
+    persistExam();
+    egzQuestion();
+  });
+}
+function egzQuestion(){
+  const q=egz.list[egz.i], n=egz.list.length;
+  renderQuestion(q,{
+    instant:false,
+    progress:`<div><div class="row" style="justify-content:space-between">
+      <span class="eyebrow">Prüfung</span><span class="kbd num">${egz.i+1} / ${n}</span></div>
+      <div class="progress"><div class="fill" style="width:${Math.round(100*egz.i/n)}%"></div></div></div>`,
+    onAnswer:(ok,oi)=>{ egz.answers.push({q,oi,ok}); next() },
+    footer:`<div class="row"><button class="btn ghost grow" id="skip">Überspringen (zählt als Fehler)</button>
+      <button class="btn ghost danger" id="abort">Abbrechen</button></div>`
+  });
+  function next(){ egz.i++; persistExam(); if(egz.i>=n) egzResult(); else egzQuestion() }
+  el("skip").onclick=()=>{ egz.answers.push({q,oi:-1,ok:false}); next() };
+  armTwice(el("abort"),"Sicher?",()=>{ egz=null; persistExam(); go("home") });
+}
+function egzResult(){
+  const n=egz.list.length, ok=egz.answers.filter(a=>a.ok).length;
+  const pct=Math.round(100*ok/n), pass=ok/n>=PASS;
+  for(const a of egz.answers) answered(a.q.n,a.ok);
+  S.exams.push({date:new Date().toLocaleDateString("de-DE",{day:"2-digit",month:"2-digit"})+" "+new Date().toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"}),total:n,correct:ok,pass});
+  delete S.examActive;
+  save(S);
+  const wrong=egz.answers.filter(a=>!a.ok);
+  view.innerHTML=`
+  <div class="card" style="text-align:center;padding:26px 16px">
+    <div class="eyebrow">Prüfungsergebnis</div>
+    <div class="resultpct" style="margin:10px 0 2px">${pct}%</div>
+    <div class="num muted">${ok} / ${n} richtig · Bestehensgrenze ${Math.ceil(n*PASS)}</div>
+    <div class="passflag ${pass?"ok":"bad"}" style="font-size:22px;margin-top:10px">${pass?"✓ BESTANDEN":"✗ NICHT BESTANDEN"}</div>
+  </div>
+  ${wrong.length?`<div class="card">
+    <h2>Zum Nacharbeiten (${wrong.length})</h2>
+    <div class="stack" style="gap:8px;margin-top:8px">${wrong.map(a=>`
+      <details class="qa"><summary><span class="qno num">${a.q.n}.</span><span>${esc(a.q.q)}</span></summary>
+      <div class="ans">${a.oi>=0?`<span style="color:var(--bad)">✗ Deine Antwort:</span> ${esc(a.q.o[a.oi])}<br>`:`<span style="color:var(--bad)">✗ Übersprungen</span><br>`}<b>✓</b> ${esc(a.q.o[a.q.a])}</div></details>`).join("")}</div>
+  </div>`:`<div class="card" style="text-align:center">Fehlerfrei. 🎯</div>`}
+  <div class="card stack">
+    <button class="btn primary" id="again">Noch einmal</button>
+    <button class="btn ghost" id="home2">Zur Startseite</button>
+  </div>`;
+  egz=null;
+  el("again").onclick=()=>go("egzamin"); el("home2").onclick=()=>go("home");
+}
+
+/* ==== START ==== */
+/* trwający egzamin nie przepada przy zmianie zakładki ani zamknięciu — restoreExam() wznawia */
+document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>go(t.dataset.v));
+restoreExam();
+go("home");
+</script>
+
+</html>
