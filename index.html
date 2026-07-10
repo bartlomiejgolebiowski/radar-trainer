@@ -129,6 +129,12 @@
     font-family:var(--mono);text-transform:uppercase;
   }
   .tab.on{color:var(--acc);background:var(--acc-soft)}
+
+  .credit{display:flex;align-items:center;justify-content:center;gap:10px;padding:18px 0 6px;text-decoration:none;color:var(--muted)}
+  .credit img{height:22px;width:auto;flex:none}
+  .credit .ct{font-size:12.5px;line-height:1.35;text-align:left}
+  .credit .ct b{display:block;color:var(--ink);font-size:13px;letter-spacing:.02em}
+  .credit:hover .ct b{color:var(--acc)}
   @media (prefers-reduced-motion: reduce){ .progress .fill{transition:none} }
 </style>
 
@@ -243,6 +249,11 @@ const Q = [
 ];
 
 /* ==== STAN ==== */
+const LOGO="data:image/png;base64,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";
+const CREDIT=`<a class="credit" href="https://prospere.ai/?utm_source=radar-trainer&utm_medium=app" target="_blank" rel="noopener">
+  <img src="${LOGO}" alt="Prospere AI">
+  <span class="ct"><b>Erstellt von Prospere AI</b>KI-Automatisierung für Unternehmen · prospere.ai</span>
+</a>`;
 const KEY="radarTrainer.v1";
 let mem={};
 function load(){ try{ return JSON.parse(localStorage.getItem(KEY))||{} }catch(e){ return mem } }
@@ -351,7 +362,8 @@ function home(){
       <td class="muted">${e.date}</td><td class="num">${e.correct}/${e.total} (${Math.round(100*e.correct/e.total)}%)</td>
       <td class="passflag ${e.pass?"ok":"bad"}">${e.pass?"BESTANDEN":"NICHT BESTANDEN"}</td></tr>`).join("")}</table>
   </div>`:""}
-  <div class="row" style="justify-content:flex-end"><button class="btn small ghost danger" id="reset">Fortschritt zurücksetzen</button></div>`;
+  <div class="row" style="justify-content:flex-end"><button class="btn small ghost danger" id="reset">Fortschritt zurücksetzen</button></div>
+  ${CREDIT}`;
   if(resume) el("go-resume").onclick=()=>go("egzamin");
   el("go-tren").onclick=()=>go("trening"); el("go-egz").onclick=()=>go("egzamin"); el("go-nauka").onclick=()=>go("nauka");
   armTwice(el("reset"),"Zum Bestätigen erneut tippen",()=>{ S={q:{},exams:[]}; save(S); egz=null; go("home") });
@@ -503,7 +515,8 @@ function egzResult(){
   <div class="card stack">
     <button class="btn primary" id="again">Noch einmal</button>
     <button class="btn ghost" id="home2">Zur Startseite</button>
-  </div>`;
+  </div>
+  ${CREDIT}`;
   egz=null;
   el("again").onclick=()=>go("egzamin"); el("home2").onclick=()=>go("home");
 }
